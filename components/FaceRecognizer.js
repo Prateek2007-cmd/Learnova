@@ -177,49 +177,102 @@ export default function FaceRecognizer() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
-      {/* Your existing UI remains unchanged */}
-      <div className="relative container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-8">
-            <Link href="/register">
-              <Button
-                variant="outline"
-                className="bg-white/80 backdrop-blur-sm border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 text-indigo-700 font-semibold px-8 py-3 shadow-lg hover:shadow-xl transition-all duration-300 rounded-full"
-              >
-                Register New Face
-              </Button>
-            </Link>
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black">Face Recognition</h1>
-        </div>
-        <div className="max-w-5xl mx-auto">
-          <div className="relative mb-10">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              className="w-full h-full object-cover"
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute top-0 left-0 w-full h-full"
-            />
-          </div>
-          <div className="text-center mb-8">
-            <span>{message}</span>
-          </div>
-          {detectedPerson && (
-            <div>
-              <h3>Recognition Successful!</h3>
-              <p>Name: {detectedPerson.name}</p>
-              <p>Roll No: {detectedPerson.rollNo}</p>
-              <p>Email: {detectedPerson.email}</p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex flex-col items-center justify-start py-12 px-4">
+      {/* Header & Register Button */}
+      <div className="text-center mb-12 space-y-4">
+        <h1 className="text-5xl md:text-7xl font-extrabold text-indigo-700 dark:text-indigo-300">
+          Face Recognition
+        </h1>
+        <p className="text-lg text-gray-600 dark:text-gray-400">
+          Smart Attendance System
+        </p>
+        <Link href="/register">
+          <Button className="bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm border border-indigo-200 dark:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-200 font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300">
+            Register New Face
+          </Button>
+        </Link>
+      </div>
+
+      {/* Video & Canvas */}
+      <div className="relative w-full max-w-4xl aspect-video rounded-3xl overflow-hidden shadow-2xl border-2 border-gray-200 dark:border-gray-700">
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          className="w-full h-full object-cover"
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute top-0 left-0 w-full h-full pointer-events-none"
+        />
+        <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      </div>
+
+      {/* Status Message & Confidence Bar */}
+      <div className="w-full max-w-xl mt-6">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 shadow-md border border-gray-200 dark:border-gray-700 text-center">
+          <p className="text-gray-700 dark:text-gray-200 font-medium">
+            {message}
+          </p>
+          {confidence > 0 && (
+            <div className="w-full h-2 bg-gray-300 dark:bg-gray-700 rounded-full mt-2">
+              <div
+                className="h-2 bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-300"
+                style={{ width: `${confidence}%` }}
+              />
             </div>
           )}
-          {finished && <Button onClick={handleRetry}>Scan Again</Button>}
         </div>
       </div>
+
+      {/* Detected Person Card */}
+      {detectedPerson && (
+        <div className="w-full max-w-md mt-8 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+          <h3 className="text-2xl font-bold text-indigo-700 dark:text-indigo-300 text-center">
+            Recognition Successful!
+          </h3>
+          <div className="space-y-2">
+            <div className="flex justify-between bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2">
+              <span className="font-medium text-gray-600 dark:text-gray-300 uppercase">
+                Name
+              </span>
+              <span className="font-semibold text-gray-800 dark:text-gray-100">
+                {detectedPerson.name}
+              </span>
+            </div>
+            {detectedPerson.rollNo && (
+              <div className="flex justify-between bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2">
+                <span className="font-medium text-gray-600 dark:text-gray-300 uppercase">
+                  Roll No
+                </span>
+                <span className="font-semibold text-gray-800 dark:text-gray-100">
+                  {detectedPerson.rollNo}
+                </span>
+              </div>
+            )}
+            {detectedPerson.email && (
+              <div className="flex justify-between bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2">
+                <span className="font-medium text-gray-600 dark:text-gray-300 uppercase">
+                  Email
+                </span>
+                <span className="font-semibold text-gray-800 dark:text-gray-100 break-all">
+                  {detectedPerson.email}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Scan Again Button */}
+      {finished && (
+        <Button
+          onClick={handleRetry}
+          className="mt-8 bg-indigo-500 dark:bg-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-semibold px-10 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+        >
+          Scan Again
+        </Button>
+      )}
     </div>
   );
 }
