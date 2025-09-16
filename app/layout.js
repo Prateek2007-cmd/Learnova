@@ -1,8 +1,8 @@
 import React from "react";
-import { Geist,Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
-
+import { AuthProvider } from "@/context/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,9 +27,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`font-sans ${geistSans.variable} ${geistMono.variable} antialiased bg-slate-900`}
+        className={`font-sans ${geistSans.variable} ${geistMono.variable} antialiased text-white bg-slate-950`}
       >
-        <Suspense fallback={null}>{children}</Suspense>
+        <AuthProvider>
+          <Suspense fallback={null}>{children}</Suspense>
+        </AuthProvider>
       </body>
     </html>
   );
