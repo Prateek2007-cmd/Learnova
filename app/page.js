@@ -359,7 +359,7 @@ export default function AboutPage() {
               <div className="space-y-8">
                 <SectionBadge icon={Sparkles} text="Our Mission" />
 
-                <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-accent bg-clip-text text-transparent">
+                <h2 className="text-[2rem] md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-accent bg-clip-text text-transparent">
                   Empowering Educational Excellence
                 </h2>
 

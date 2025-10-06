@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import LearnovaChatbot from "@/components/ChatBot";
+import ClientLayout from "@/components/ClientLayout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,16 @@ export const metadata = {
   authors: [{ name: "Learnova Team" }],
   creator: "Prem Shaw",
   publisher: "Learnova",
+  applicationName: "Learnova",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Learnova",
+    startupImage: ["/apple-touch-icon.png"],
+  },
+  formatDetection: {
+    telephone: false,
+  },
   robots: {
     index: true,
     follow: true,
@@ -215,7 +226,7 @@ export default function RootLayout({ children }) {
         {/* Favicons */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.jpg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
 
         {/* Canonical and sitemap */}
@@ -232,6 +243,7 @@ export default function RootLayout({ children }) {
             <div className="z-50">
               <LearnovaChatbot />
             </div>
+            <ClientLayout/>
             <Toaster
               position="top-right" // default; see below for options
               toastOptions={{
