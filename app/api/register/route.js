@@ -38,6 +38,10 @@ export async function POST(req) {
       return jsonError("Name, rollNo, email, and photo are required", 400);
     }
 
+    if (!EMAIL_PATTERN.test(email)) {
+      return jsonError("Invalid email address", 400);
+    }
+
     // Get DB
     const db = await connectDb();
     const users = db.collection("users");
