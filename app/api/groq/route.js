@@ -1,5 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { connectDb } from "@/lib/mongodb";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MAX_MESSAGE_LENGTH = 2000;
@@ -7,27 +8,67 @@ const MAX_MESSAGE_LENGTH = 2000;
 // Rate limiting setup
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 10; // max 10 requests per minute
-const rateLimitMap = new Map();
 
-const isRateLimited = (userId) => {
+// Fallback in-memory rate limiter for resilience (e.g. offline dev or DB issues)
+const fallbackRateLimitMap = new Map();
+
+const isRateLimitedFallback = (userId) => {
   const now = Date.now();
-  if (!rateLimitMap.has(userId)) {
-    rateLimitMap.set(userId, [now]);
+  if (!fallbackRateLimitMap.has(userId)) {
+    fallbackRateLimitMap.set(userId, [now]);
     return false;
   }
 
-  const timestamps = rateLimitMap.get(userId);
+  const timestamps = fallbackRateLimitMap.get(userId);
   const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
 
   if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    rateLimitMap.set(userId, validTimestamps);
+    fallbackRateLimitMap.set(userId, validTimestamps);
     return true;
   }
 
   validTimestamps.push(now);
-  rateLimitMap.set(userId, validTimestamps);
+  fallbackRateLimitMap.set(userId, validTimestamps);
   return false;
 };
+
+const isRateLimited = async (userId) => {
+  if (!process.env.MONGODB_URI) {
+    return isRateLimitedFallback(userId);
+  }
+
+  try {
+    const db = await connectDb();
+    const rateLimits = db.collection("rate_limits");
+    const now = Date.now();
+
+    const doc = await rateLimits.findOne({ userId });
+    const timestamps = doc?.timestamps || [];
+    const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
+
+    if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
+      // Update DB to prune expired timestamps even when rate limited
+      await rateLimits.updateOne(
+        { userId },
+        { $set: { timestamps: validTimestamps } },
+        { upsert: true }
+      );
+      return true;
+    }
+
+    validTimestamps.push(now);
+    await rateLimits.updateOne(
+      { userId },
+      { $set: { timestamps: validTimestamps } },
+      { upsert: true }
+    );
+    return false;
+  } catch (error) {
+    console.warn(`[Rate Limit] MongoDB distributed rate limiter failed, falling back to in-memory:`, error);
+    return isRateLimitedFallback(userId);
+  }
+};
+
 
 /**
  * Handles incoming chat completions requests using the Groq AI SDK.
@@ -49,7 +90,7 @@ export async function POST(request) {
     }
 
     // Rate limiting per authenticated user
-    if (isRateLimited(decodedToken.uid)) {
+    if (await isRateLimited(decodedToken.uid)) {
       return jsonError("Too many requests. Please try again later.", 429);
     }
 
