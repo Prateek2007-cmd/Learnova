@@ -99,10 +99,7 @@ export async function PATCH(request) {
     const authResult = await verifyFirebaseToken(token);
 
     if (!authResult.valid) {
-      return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
-      );
+      return jsonError("Unauthorized", 401);
     }
 
     const decodedToken = authResult.decodedToken;
@@ -138,18 +135,13 @@ export async function PATCH(request) {
 
     const db = await connectDb();
 
-    await db
-      .collection("settings")
-      .updateOne(
-        { userId: targetUserId },
-        { $set: { ...settings, updatedAt: new Date() } },
-        { upsert: true },
-      );
-
-    return NextResponse.json(
-      { message: "Settings saved successfully" },
-      { status: 200 },
+    await db.collection("settings").updateOne(
+      { userId: targetUserId },
+      { $set: { ...settings, updatedAt: new Date() } },
+      { upsert: true }
     );
+
+    return jsonSuccess({ message: "Settings saved successfully" }, 200);
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to save settings" },
