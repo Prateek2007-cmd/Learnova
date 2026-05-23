@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   MessageSquare, 
   Send, 
+  X, 
   Sparkles, 
   GraduationCap, 
   BookOpen, 
@@ -192,6 +193,16 @@ const LearnovaChatbot = () => {
             </span>
           )}
         </div>
+        <button
+          onClick={() => {
+            const chatContainer = document.querySelector('.flex.flex-col.h-screen');
+            if (chatContainer) chatContainer.style.display = 'none';
+          }}
+          className="p-2 rounded-lg hover:bg-slate-100 transition-colors sm:hidden"
+          aria-label="Close chat"
+        >
+          <X size={18} className="text-slate-500" />
+        </button>
       </header>
 
       {/* Category Selection Tabs */}
