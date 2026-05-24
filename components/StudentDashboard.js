@@ -19,6 +19,7 @@ import {
   Download,
   Star,
   Sparkles,
+  GripVertical,
 } from "lucide-react";
 
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
@@ -68,6 +69,106 @@ const StudentDashboard = () => {
   const [isAttendanceWindow, setIsAttendanceWindow] = useState(false);
   const [gamificationData, setGamificationData] = useState(null);
   const [viewMode, setViewMode] = useState("heatmap");
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [widgets, setWidgets] = useState([
+    { id: "gamification", name: "Gamification Stats", enabled: true },
+    { id: "attendanceStats", name: "Attendance Overview", enabled: true },
+    { id: "recentActivity", name: "Recent Activity Feed", enabled: true },
+    { id: "heatmap", name: "Attendance Heatmap & Calendar", enabled: true },
+    { id: "timetable", name: "Today's Schedule", enabled: true },
+    { id: "analyticsCards", name: "Attendance Analytics Chart", enabled: true },
+    { id: "quickStats", name: "Quick Performance Stats", enabled: true },
+    { id: "security", name: "Security & Device Status", enabled: true }
+  ]);
+
+  const [draggedIdx, setDraggedIdx] = useState(null);
+
+  // Initialize and load saved widget configs from localStorage on client-side mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("student_dashboard_widgets_v2");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const merged = [
+              { id: "gamification", name: "Gamification Stats", enabled: true },
+              { id: "attendanceStats", name: "Attendance Overview", enabled: true },
+              { id: "recentActivity", name: "Recent Activity Feed", enabled: true },
+              { id: "heatmap", name: "Attendance Heatmap & Calendar", enabled: true },
+              { id: "timetable", name: "Today's Schedule", enabled: true },
+              { id: "analyticsCards", name: "Attendance Analytics Chart", enabled: true },
+              { id: "quickStats", name: "Quick Performance Stats", enabled: true },
+              { id: "security", name: "Security & Device Status", enabled: true }
+            ].map(defaultWidget => {
+              const savedWidget = parsed.find(w => w.id === defaultWidget.id);
+              return savedWidget ? { ...defaultWidget, enabled: savedWidget.enabled } : defaultWidget;
+            });
+            const ordered = [];
+            parsed.forEach(item => {
+              const matched = merged.find(w => w.id === item.id);
+              if (matched) ordered.push(matched);
+            });
+            merged.forEach(item => {
+              if (!ordered.find(w => w.id === item.id)) ordered.push(item);
+            });
+            setWidgets(ordered);
+          }
+        } catch (e) {
+          console.error("Failed to parse saved widget config", e);
+        }
+      }
+    }
+  }, []);
+
+  const saveWidgetPreferences = (updatedWidgets) => {
+    setWidgets(updatedWidgets);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("student_dashboard_widgets_v2", JSON.stringify(updatedWidgets));
+    }
+  };
+
+  const toggleWidget = (id) => {
+    const updated = widgets.map(w => w.id === id ? { ...w, enabled: !w.enabled } : w);
+    saveWidgetPreferences(updated);
+  };
+
+  const resetWidgets = () => {
+    const defaults = [
+      { id: "gamification", name: "Gamification Stats", enabled: true },
+      { id: "attendanceStats", name: "Attendance Overview", enabled: true },
+      { id: "recentActivity", name: "Recent Activity Feed", enabled: true },
+      { id: "heatmap", name: "Attendance Heatmap & Calendar", enabled: true },
+      { id: "timetable", name: "Today's Schedule", enabled: true },
+      { id: "analyticsCards", name: "Attendance Analytics Chart", enabled: true },
+      { id: "quickStats", name: "Quick Performance Stats", enabled: true },
+      { id: "security", name: "Security & Device Status", enabled: true }
+    ];
+    saveWidgetPreferences(defaults);
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) return;
+    
+    const updated = [...widgets];
+    const draggedItem = updated[draggedIdx];
+    updated.splice(draggedIdx, 1);
+    updated.splice(index, 0, draggedItem);
+    setDraggedIdx(index);
+    setWidgets(updated);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    saveWidgetPreferences(widgets);
+  };
 
   // Derived calculation from recentActivity state with safe fallback default metrics
   const attendanceStats = useMemo(() => {
@@ -202,6 +303,373 @@ const StudentDashboard = () => {
     );
   };
 
+  const getWidgetSpan = (id) => {
+    switch (id) {
+      case "gamification":
+        return "xl:col-span-3";
+      case "attendanceStats":
+      case "recentActivity":
+      case "heatmap":
+        return "xl:col-span-2";
+      case "timetable":
+      case "analyticsCards":
+      case "quickStats":
+      case "security":
+      default:
+        return "xl:col-span-1";
+    }
+  };
+
+  const renderWidgetContent = (id) => {
+    switch (id) {
+      case "gamification":
+        return gamificationData ? (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl flex flex-col gap-6">
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex flex-col gap-6 flex-1">
+                <div className="flex gap-4 items-center">
+                  <StreakCounter currentStreak={Number(gamificationData.currentStreak) || 0} />
+                  <div className="flex-1">
+                    <XpProgressBar 
+                      currentLevel={Number(gamificationData.currentLevel) || 1} 
+                      currentXp={Number(gamificationData.totalXp) || 0} 
+                    />
+                  </div>
+                </div>
+                <BadgeGallery unlockedBadges={gamificationData.unlockedBadges} />
+              </div>
+            </div>
+            {user && user.uid && (
+              <AttendanceAnalytics
+                userId={user.uid}
+                recentActivity={recentActivity}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 text-center text-gray-400 text-xs">
+            Unlock achievements and check-in streaks by syncing attendance.
+          </div>
+        );
+
+      case "attendanceStats":
+        return (
+          <div className="space-y-8">
+            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">
+                  Attendance Overview
+                </h2>
+
+                <button
+                  className="text-accent hover:text-accent/80 transition-colors"
+                  aria-label="Refresh attendance overview"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatCard
+                  color="green"
+                  label="Present"
+                  value={attendanceStats?.present ?? 0}
+                />
+
+                <StatCard
+                  color="red"
+                  label="Absent"
+                  value={attendanceStats?.absent ?? 0}
+                />
+
+                <StatCard
+                  color="yellow"
+                  label="Late"
+                  value={attendanceStats?.late ?? 0}
+                />
+
+                <StatCard
+                  color="blue"
+                  label="Overall"
+                  value={`${attendanceStats?.percentage ?? 0}%`}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-300">
+                    Attendance Percentage
+                  </span>
+
+                  <span className="text-accent font-semibold">
+                    {attendanceStats?.percentage ?? 0}%
+                  </span>
+                </div>
+
+                <div className="w-full h-4 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-700"
+                    style={{
+                      width: `${attendanceStats?.percentage ?? 0}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="text-xs text-gray-400">
+                  Target: 75% minimum required
+                </div>
+              </div>
+            </div>
+
+            <AchievementSection
+              attendancePercentage={attendancePerformance.attendancePercentage}
+              streakDays={attendancePerformance.streakDays}
+            />
+          </div>
+        );
+
+      case "recentActivity":
+        return (
+          <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">
+                Recent Activity
+              </h2>
+
+              <button
+                className="text-accent hover:text-accent/80 transition-colors"
+                aria-label="Download recent activity"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {recentActivity.map((activity, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        activity.status === "present"
+                          ? "bg-green-400"
+                          : activity.status === "absent"
+                          ? "bg-red-400"
+                          : "bg-yellow-400"
+                      }`}
+                    />
+
+                    <div>
+                      <div className="text-white font-medium">
+                        {activity.subject}
+                      </div>
+
+                      <div className="text-gray-400 text-sm">
+                        {activity.date}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div
+                      className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                        activity.status
+                      )}`}
+                    >
+                      {activity.status.toUpperCase()}
+                    </div>
+
+                    <div className="text-gray-400 text-sm mt-1">
+                      {activity.time}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "heatmap":
+        return (
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <div className="bg-black/40 backdrop-blur-md p-1 rounded-xl flex items-center border border-white/10 w-fit">
+                <button
+                  onClick={() => setViewMode("heatmap")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    viewMode === "heatmap"
+                      ? "bg-accent text-white shadow-lg"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Heatmap
+                </button>
+                <button
+                  onClick={() => setViewMode("calendar")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    viewMode === "calendar"
+                      ? "bg-accent text-white shadow-lg"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Calendar
+                </button>
+              </div>
+            </div>
+
+            {viewMode === "heatmap" ? (
+              <AttendanceHeatmap recentActivity={recentActivity} />
+            ) : (
+              <AttendanceCalendar recentActivity={recentActivity} />
+            )}
+          </div>
+        );
+
+      case "timetable":
+        return (
+          <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <div className="flex items-center space-x-2 mb-6">
+              <Calendar className="w-6 h-6 text-accent" />
+
+              <h2 className="text-xl font-bold text-white">
+                Today's Classes
+              </h2>
+            </div>
+
+            {todayClasses.length > 0 ? (
+              <div className="space-y-3">
+                {todayClasses.map((cls, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-white font-medium">
+                        {cls.subject}
+                      </div>
+
+                      <div className="text-sm text-gray-400">
+                        {cls.time}
+                      </div>
+                    </div>
+
+                    <div className="text-sm text-gray-400">
+                      {cls.teacher}
+                    </div>
+
+                    <div className="flex items-center space-x-1 mt-2">
+                      <MapPin className="w-3 h-3 text-accent" />
+
+                      <span className="text-xs text-accent">
+                        {cls.room}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+
+                <p className="text-gray-400">
+                  No classes scheduled for today
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
+      case "analyticsCards":
+        return <AttendanceChart />;
+
+      case "quickStats":
+        return (
+          <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-6">
+              Quick Stats
+            </h2>
+
+            <div className="space-y-4">
+              <QuickStat
+                icon={<Target className="w-4 h-4 text-blue-400" />}
+                label="This Week"
+                value="4/5"
+              />
+
+              <QuickStat
+                icon={
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                }
+                label="This Month"
+                value="18/20"
+              />
+
+              <QuickStat
+                icon={<Award className="w-4 h-4 text-yellow-400" />}
+                label="Perfect Days"
+                value="12"
+              />
+
+              <QuickStat
+                icon={<Star className="w-4 h-4 text-purple-400" />}
+                label="Streak"
+                value="5 days"
+              />
+            </div>
+          </div>
+        );
+
+      case "security":
+        return (
+          <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <div className="flex items-center space-x-2 mb-6">
+              <Shield className="w-6 h-6 text-green-400" />
+
+              <h2 className="text-xl font-bold text-white">
+                Security Status
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              <SecurityItem
+                label="Face Registered"
+                status="Active"
+              />
+
+              <SecurityItem
+                label="Device Verified"
+                status="Trusted"
+              />
+
+              <SecurityItem
+                label="Location Access"
+                status="Granted"
+              />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Smartphone className="w-4 h-4 text-blue-400" />
+
+                  <span className="text-gray-300 text-sm">
+                    Mobile Verified
+                  </span>
+                </div>
+
+                <span className="text-blue-400 text-sm">
+                  +91 ***-***-1234
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -288,6 +756,14 @@ const StudentDashboard = () => {
                   <Download className="w-3 h-3" />
                   Export Data
                 </button>
+
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
+                >
+                  <Sparkles className="w-3 h-3 text-purple-400" />
+                  Personalize Dashboard
+                </button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -304,35 +780,9 @@ const StudentDashboard = () => {
 
       {/* Main */}
       <div className="relative z-10 container mx-auto px-4 py-8 space-y-8">
-        {/* Gamification Section */}
-        {gamificationData && (
-          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl flex flex-col gap-6">
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex flex-col gap-6 flex-1">
-                <div className="flex gap-4 items-center">
-                  <StreakCounter currentStreak={Number(gamificationData.currentStreak) || 0} />
-                  <div className="flex-1">
-                    <XpProgressBar 
-                      currentLevel={Number(gamificationData.currentLevel) || 1} 
-                      currentXp={Number(gamificationData.totalXp) || 0} 
-                    />
-                  </div>
-                </div>
-                <BadgeGallery unlockedBadges={gamificationData.unlockedBadges} />
-              </div>
-            </div>
-            {user && user.uid && (
-              <AttendanceAnalytics
-                userId={user.uid}
-                recentActivity={recentActivity}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Attendance Window */}
+        {/* Attendance Window (Always fixed at the top if open) */}
         {isAttendanceWindow && upcomingClass && (
-          <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-xl rounded-2xl border border-white/20 p-6 shadow-2xl">
+          <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-xl rounded-2xl border border-white/20 p-6 shadow-2xl animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-xl flex items-center justify-center">
@@ -413,314 +863,101 @@ const StudentDashboard = () => {
           </div>
         )}
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Overview */}
-            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">
-                  Attendance Overview
-                </h2>
-
-                <button
-                  className="text-accent hover:text-accent/80 transition-colors"
-                  aria-label="Refresh attendance overview"
+        {/* Dynamic Customizable Widget Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+          {widgets
+            .filter((widget) => widget.enabled)
+            .map((widget, idx) => {
+              const spanClass = getWidgetSpan(widget.id);
+              return (
+                <div
+                  key={widget.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDragEnd={handleDragEnd}
+                  className={`transition-all duration-300 relative group/widget ${spanClass} ${
+                    draggedIdx === idx
+                      ? "opacity-30 scale-95 border-2 border-dashed border-purple-500/50 rounded-2xl overflow-hidden"
+                      : ""
+                  }`}
                 >
-                  <RefreshCw className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <StatCard
-                  color="green"
-                  label="Present"
-                  value={attendanceStats?.present ?? 0}
-                />
-
-                <StatCard
-                  color="red"
-                  label="Absent"
-                  value={attendanceStats?.absent ?? 0}
-                />
-
-                <StatCard
-                  color="yellow"
-                  label="Late"
-                  value={attendanceStats?.late ?? 0}
-                />
-
-                <StatCard
-                  color="blue"
-                  label="Overall"
-                  value={`${attendanceStats?.percentage ?? 0}%`}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-300">
-                    Attendance Percentage
-                  </span>
-
-                  <span className="text-accent font-semibold">
-                    {attendanceStats?.percentage ?? 0}%
-                  </span>
-                </div>
-
-                <div className="w-full h-4 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-700"
-                    style={{
-                      width: `${attendanceStats?.percentage ?? 0}%`,
-                    }}
-                  />
-                </div>
-
-                <div className="text-xs text-gray-400">
-                  Target: 75% minimum required
-                </div>
-              </div>
-            </div>
-
-            <AchievementSection
-              attendancePercentage={attendancePerformance.attendancePercentage}
-              streakDays={attendancePerformance.streakDays}
-            />
-
-            {/* Activity */}
-            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">
-                  Recent Activity
-                </h2>
-
-                <button
-                  className="text-accent hover:text-accent/80 transition-colors"
-                  aria-label="Download recent activity"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {recentActivity.map((activity, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          activity.status === "present"
-                            ? "bg-green-400"
-                            : activity.status === "absent"
-                            ? "bg-red-400"
-                            : "bg-yellow-400"
-                        }`}
-                      />
-
-                      <div>
-                        <div className="text-white font-medium">
-                          {activity.subject}
-                        </div>
-
-                        <div className="text-gray-400 text-sm">
-                          {activity.date}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div
-                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                          activity.status
-                        )}`}
-                      >
-                        {activity.status.toUpperCase()}
-                      </div>
-
-                      <div className="text-gray-400 text-sm mt-1">
-                        {activity.time}
-                      </div>
+                  {/* Drag Handle HUD overlay that shows up on hover */}
+                  <div className="absolute top-3 right-3 z-30 opacity-0 group-hover/widget:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <div className="flex items-center gap-1 bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/15 shadow-xl">
+                      <GripVertical className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                      <span className="text-[9px] font-bold text-gray-300 uppercase tracking-wider">Drag to Move</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Heatmap / Calendar View */}
-            <div>
-              <div className="flex justify-end mb-4">
-                <div className="bg-black/40 backdrop-blur-md p-1 rounded-xl flex items-center border border-white/10 w-fit">
-                  <button
-                    onClick={() => setViewMode("heatmap")}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      viewMode === "heatmap"
-                        ? "bg-accent text-white shadow-lg"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    Heatmap
-                  </button>
-                  <button
-                    onClick={() => setViewMode("calendar")}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      viewMode === "calendar"
-                        ? "bg-accent text-white shadow-lg"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    Calendar
-                  </button>
+                  {renderWidgetContent(widget.id)}
                 </div>
-              </div>
+              );
+            })}
+        </div>
+      </div>
 
-              {viewMode === "heatmap" ? (
-                <AttendanceHeatmap recentActivity={recentActivity} />
-              ) : (
-                <AttendanceCalendar recentActivity={recentActivity} />
-              )}
-            </div>
-          </div>
-
-          {/* Right */}
-          <div className="space-y-8">
-            {/* Schedule */}
-            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-              <div className="flex items-center space-x-2 mb-6">
-                <Calendar className="w-6 h-6 text-accent" />
-
-                <h2 className="text-xl font-bold text-white">
-                  Today's Classes
-                </h2>
-              </div>
-
-              {todayClasses.length > 0 ? (
-                <div className="space-y-3">
-                  {todayClasses.map((cls, index) => (
-                    <div
-                      key={index}
-                      className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-white font-medium">
-                          {cls.subject}
-                        </div>
-
-                        <div className="text-sm text-gray-400">
-                          {cls.time}
-                        </div>
-                      </div>
-
-                      <div className="text-sm text-gray-400">
-                        {cls.teacher}
-                      </div>
-
-                      <div className="flex items-center space-x-1 mt-2">
-                        <MapPin className="w-3 h-3 text-accent" />
-
-                        <span className="text-xs text-accent">
-                          {cls.room}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-
-                  <p className="text-gray-400">
-                    No classes scheduled for today
-                  </p>
-                </div>
-              )}
+      {/* Glassmorphic Personalization Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-slate-900/90 border border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+            <div className="absolute top-4 right-4">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors text-lg p-1.5"
+              >
+                ✕
+              </button>
             </div>
 
-            {/* Chart */}
-            <AttendanceChart />
+            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-400" />
+              Personalize Dashboard Widgets
+            </h3>
+            <p className="text-gray-400 text-xs mb-6">
+              Toggle widget visibility below. Drag widgets on the dashboard grid to rearrange their layout.
+            </p>
 
-            {/* Stats */}
-            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-              <h2 className="text-xl font-bold text-white mb-6">
-                Quick Stats
-              </h2>
-
-              <div className="space-y-4">
-                <QuickStat
-                  icon={<Target className="w-4 h-4 text-blue-400" />}
-                  label="This Week"
-                  value="4/5"
-                />
-
-                <QuickStat
-                  icon={
-                    <TrendingUp className="w-4 h-4 text-green-400" />
-                  }
-                  label="This Month"
-                  value="18/20"
-                />
-
-                <QuickStat
-                  icon={<Award className="w-4 h-4 text-yellow-400" />}
-                  label="Perfect Days"
-                  value="12"
-                />
-
-                <QuickStat
-                  icon={<Star className="w-4 h-4 text-purple-400" />}
-                  label="Streak"
-                  value="5 days"
-                />
-              </div>
-            </div>
-
-            {/* Security */}
-            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-              <div className="flex items-center space-x-2 mb-6">
-                <Shield className="w-6 h-6 text-green-400" />
-
-                <h2 className="text-xl font-bold text-white">
-                  Security Status
-                </h2>
-              </div>
-
-              <div className="space-y-3">
-                <SecurityItem
-                  label="Face Registered"
-                  status="Active"
-                />
-
-                <SecurityItem
-                  label="Device Verified"
-                  status="Trusted"
-                />
-
-                <SecurityItem
-                  label="Location Access"
-                  status="Granted"
-                />
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Smartphone className="w-4 h-4 text-blue-400" />
-
-                    <span className="text-gray-300 text-sm">
-                      Mobile Verified
-                    </span>
+            <div className="space-y-3 mb-6">
+              {widgets.map((widget) => (
+                <div
+                  key={widget.id}
+                  className="flex items-center justify-between bg-white/5 border border-white/5 rounded-xl p-3.5 hover:bg-white/10 transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium text-white">{widget.name}</span>
                   </div>
-
-                  <span className="text-blue-400 text-sm">
-                    +91 ***-***-1234
-                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={widget.enabled}
+                      onChange={() => toggleWidget(widget.id)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
                 </div>
-              </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 justify-end pt-4 border-t border-white/10">
+              <button
+                onClick={resetWidgets}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs font-semibold rounded-xl transition-all"
+              >
+                Reset to Default
+              </button>
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="px-5 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Animations */}
       <style jsx>{`
