@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
 import { useAuth } from "@/hooks/useAuth";
-import { db } from "@/lib/firebaseConfig";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { useNotices } from "@/contexts/FirestoreContext";
 import { Navbar } from "./Navbar";
 import NoticeSearch from "./NoticeSearch";
 import NoticeFilters from "./NoticeFilters";
@@ -24,10 +23,11 @@ const CATEGORIES = [
 ];
 
 const SmartNoticeBoard = () => {
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
-  const [notices, setNotices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ── Consume the shared pooled subscription from FirestoreContext ──────────
+  // No local onSnapshot — notices arrive from the global singleton listener.
+  const { notices: rawNotices, loading: noticesLoading, error: noticesError } = useNotices();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -41,68 +41,45 @@ const SmartNoticeBoard = () => {
 
   const userId = user?.uid || user?.id || "anonymous";
 
-  const getUserRole = () => {
-    return userProfile?.role || "student";
-  };
+  // Normalise createdAt to a JS Date so downstream components can safely call
+  // getRelativeTime() regardless of whether it arrived as a Firestore Timestamp
+  // or was already converted by firestorePool's snapshot mapper.
+  const notices = useMemo(
+    () =>
+      rawNotices.map((n) => ({
+        ...n,
+        createdAt:
+          n.createdAt instanceof Date
+            ? n.createdAt
+            : n.createdAt?.toDate
+            ? n.createdAt.toDate()
+            : new Date(n.createdAt || Date.now()),
+      })),
+    [rawNotices]
+  );
 
-  // Load notices + Firestore onSnapshot query
+  const loading = authLoading || noticesLoading;
+
+  // Show toast once if the pool reports an error
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
+    if (noticesError) {
+      toast.error("Failed to load notices");
     }
+  }, [noticesError]);
 
-    const userRole = getUserRole();
-
-    // Query notices collection where targetAudience contains userRole
-    const q = query(
-      collection(db, "notices"),
-      where("targetAudience", "array-contains", userRole)
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const noticesData = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate
-              ? data.createdAt.toDate()
-              : new Date(data.createdAt || Date.now()),
-          };
-        });
-        setNotices(noticesData);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching notices:", error);
-        toast.error("Failed to load notices");
-        setLoading(false);
-      }
-    );
-
-    // Load read notices
+  // Load persisted read-state from localStorage
+  useEffect(() => {
+    if (!userId || userId === "anonymous") return;
     try {
-      const savedReadNotices = localStorage.getItem(
-        `readNotices_${userId}`
-      );
-
-      if (savedReadNotices) {
-        const parsed = JSON.parse(savedReadNotices);
-
-        if (Array.isArray(parsed)) {
-          setReadNotices(new Set(parsed));
-        }
+      const saved = localStorage.getItem(`readNotices_${userId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setReadNotices(new Set(parsed));
       }
     } catch (err) {
       console.error("Failed to load read notices:", err);
     }
-
-    return () => unsubscribe();
-  }, [user, userProfile, authLoading, userId]);
+  }, [userId]);
 
   // Save read state
   const saveReadState = useCallback(
