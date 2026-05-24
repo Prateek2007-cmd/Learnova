@@ -54,8 +54,9 @@ export default function UniversalProfile() {
     }
   }, []);
 
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [avatarUrl, setAvatarUrl] = useState(null);
   const fileInputRef = useRef(null);
@@ -66,39 +67,29 @@ export default function UniversalProfile() {
     }
   }, [user]);
 
-  // Role state fetched from Firestore
-  const [role, setRole] = useState("student");
-  const [userData, setUserData] = useState(null);
+  const role = userProfile?.role || "student";
+  const userData = userProfile;
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchStats = async () => {
       if (!user?.uid) return;
       try {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          setUserData(data); //to save the full profile data
-          setRole(data.role || "student");
-        }
-
-        // Fetch dashboard statistics from the userStats collection
         const statsRef = doc(db, "userStats", user.uid);
         const statsSnap = await getDoc(statsRef);
         if (statsSnap.exists()) {
           setStats(statsSnap.data());
         }
       } catch (error) {
-        // Silently handle error fetching user data / stats
+        // Silently handle
       }
     };
-    fetchUserData();
+    fetchStats();
   }, [user]);
 
   const [formData, setFormData] = useState({
-    displayName: user?.displayName || "",
-    email: user?.email || "",
+    displayName: "",
+    email: "",
     phone: "",
     location: "",
     bio: "Passionate learner exploring the world of knowledge through Learnova.",
@@ -107,6 +98,19 @@ export default function UniversalProfile() {
     twitter: "",
   });
 
+  useEffect(() => {
+    if (user || userProfile) {
+      setFormData(prev => ({
+        ...prev,
+        displayName: user?.displayName || userProfile?.name || "",
+        email: user?.email || userProfile?.email || "",
+        phone: userProfile?.phone || prev.phone,
+        location: userProfile?.location || prev.location,
+        bio: userProfile?.bio || prev.bio,
+      }));
+    }
+  }, [user, userProfile]);
+
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
@@ -114,8 +118,30 @@ export default function UniversalProfile() {
     });
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    const loadingToast = toast.loading("Saving profile...");
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        name: formData.displayName,
+        phone: formData.phone,
+        location: formData.location,
+        bio: formData.bio,
+      });
+
+      if (user.displayName !== formData.displayName) {
+        await updateProfile(user, { displayName: formData.displayName });
+      }
+
+      toast.success("Profile updated successfully!", { id: loadingToast });
+      setIsEditing(false);
+    } catch (error) {
+      toast.error("Failed to save profile. Please try again.", { id: loadingToast });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImageUpload = () => {
@@ -662,10 +688,11 @@ export default function UniversalProfile() {
                     <>
                       <Button
                         onClick={handleSave}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6"
+                        disabled={isSaving}
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 disabled:opacity-50"
                       >
                         <Save className="h-4 w-4 mr-2" />
-                        Save
+                        {isSaving ? "Saving..." : "Save"}
                       </Button>
                       <Button
                         onClick={() => setIsEditing(false)}
