@@ -437,24 +437,32 @@ const StudentDashboard = () => {
                   color="green"
                   label="Present"
                   value={attendanceStats?.present ?? 0}
+                  icon={<CheckCircle className="w-4 h-4" />}
+                  subtitle="classes"
                 />
 
                 <StatCard
                   color="red"
                   label="Absent"
                   value={attendanceStats?.absent ?? 0}
+                  icon={<Shield className="w-4 h-4 text-red-400" />}
+                  subtitle="classes"
                 />
 
                 <StatCard
                   color="yellow"
                   label="Late"
                   value={attendanceStats?.late ?? 0}
+                  icon={<Clock className="w-4 h-4 text-yellow-400" />}
+                  subtitle="classes"
                 />
 
                 <StatCard
                   color="blue"
                   label="Overall"
                   value={`${attendanceStats?.percentage ?? 0}%`}
+                  icon={<TrendingUp className="w-4 h-4 text-blue-400" />}
+                  subtitle="average"
                 />
               </div>
 
@@ -747,24 +755,59 @@ const StudentDashboard = () => {
   );  
 };
 
-const StatCard = ({ color, label, value }) => {
+const StatCard = ({ color = "blue", label, title, value, icon, subtitle, trend }) => {
   const styles = {
-    green:
-      "from-green-500/20 to-green-600/20 border-green-500/30 text-green-400 text-green-300",
-    red:
-      "from-red-500/20 to-red-600/20 border-red-500/30 text-red-400 text-red-300",
-    yellow:
-      "from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 text-yellow-400 text-yellow-300",
-    blue:
-      "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400 text-blue-300",
+    green: {
+      bg: "from-green-500/10 to-green-600/10 border-green-500/20 hover:border-green-500/40",
+      text: "text-green-400",
+      muted: "text-green-300/70",
+    },
+    red: {
+      bg: "from-red-500/10 to-red-600/10 border-red-500/20 hover:border-red-500/40",
+      text: "text-red-400",
+      muted: "text-red-300/70",
+    },
+    yellow: {
+      bg: "from-yellow-500/10 to-yellow-600/10 border-yellow-500/20 hover:border-yellow-500/40",
+      text: "text-yellow-400",
+      muted: "text-yellow-300/70",
+    },
+    blue: {
+      bg: "from-blue-500/10 to-blue-600/10 border-blue-500/20 hover:border-blue-500/40",
+      text: "text-blue-400",
+      muted: "text-blue-300/70",
+    },
+    purple: {
+      bg: "from-purple-500/10 to-purple-600/10 border-purple-500/20 hover:border-purple-500/40",
+      text: "text-purple-400",
+      muted: "text-purple-300/70",
+    }
   };
 
-  const style = styles[color].split(" ");
+  const currentStyle = styles[color] || styles.blue;
+  const displayLabel = label || title || "";
 
   return (
-    <div className={`bg-gradient-to-br ${style[0]} ${style[1]} rounded-xl p-4 border ${style[2]}`}>
-      <div className={`text-2xl font-bold ${style[3]}`}>{value}</div>
-      <div className={`${style[4]} text-sm`}>{label}</div>
+    <div className={`bg-gradient-to-br ${currentStyle.bg} rounded-xl p-4 border transition-all duration-300 flex flex-col justify-between h-full`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className={`${currentStyle.muted} text-xs font-medium uppercase tracking-wider`}>
+          {displayLabel}
+        </span>
+        {icon && <div className={`${currentStyle.text}`}>{icon}</div>}
+      </div>
+      
+      <div className="space-y-1">
+        <div className="text-2xl font-bold text-white tracking-tight">
+          {value ?? 0}
+        </div>
+        
+        {(subtitle || trend) && (
+          <div className="flex items-center space-x-1.5 text-xs mt-1">
+            {trend && <span className={`${currentStyle.text} font-semibold`}>{trend}</span>}
+            {subtitle && <span className="text-gray-400">{subtitle}</span>}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
