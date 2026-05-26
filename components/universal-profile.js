@@ -300,23 +300,23 @@ export default function UniversalProfile() {
   formData.append("file", file);
 
   try {
-    const res = await fetch("/upload", {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    if (!res.ok) {
-      throw new Error("Upload failed");
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+
+      toast.success("Uploaded!");
+      e.target.value = ""; 
+    } catch (error) {
+      toast.error("Upload failed!");
+    } finally {
+      toast.dismiss(loadingToast);
     }
-
-    toast.success("Uploaded!");
-    e.target.value = ""; 
-  } catch (error) {
-    toast.error("Upload failed!");
-  } finally {
-    toast.dismiss(loadingToast);
-  }
-  };  
+   
 
     try {
       const token = await user.getIdToken();
@@ -938,4 +938,4 @@ export default function UniversalProfile() {
       </div>
     </div>
   );
-}
+};
