@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { initFirebaseAdmin, getAdminDb } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
-import { authenticateRequest } from "@/lib/error-handler";
+import { authenticateRequest, parseJSON } from "@/lib/error-handler";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
+
+const MAX_BULK_IMPORT_PAYLOAD_BYTES = 1024 * 1024;
 
 export async function POST(req) {
   try {
@@ -16,7 +18,7 @@ export async function POST(req) {
     // Here we can fetch user profile to check role, but assuming valid token is enough for MVP.
     // In a real scenario, check if decodedToken.role === "institute" or similar.
 
-    const body = await req.json();
+    const body = await parseJSON(req, MAX_BULK_IMPORT_PAYLOAD_BYTES);
     const { students } = body;
 
     if (!students || !Array.isArray(students)) {
@@ -105,6 +107,13 @@ export async function POST(req) {
     }, { status: 200 });
 
   } catch (error) {
+    if (error.statusCode) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+
     console.error("Bulk import error:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
