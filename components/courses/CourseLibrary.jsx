@@ -86,7 +86,7 @@ export default function CourseLibrary({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.3) }}
-                    className="group bg-white/5 border border-white/10 hover:border-indigo-500/40 rounded-2xl p-5 space-y-4 flex flex-col justify-between backdrop-blur-md hover:shadow-indigo-500/5 hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden"
+                    className="group bg-white/5 border border-white/10 hover:border-indigo-500/40 rounded-2xl p-5 space-y-4 flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-2xl relative overflow-hidden"
                   >
                     {/* Decorative glowing card accent */}
                     <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors duration-300" />
