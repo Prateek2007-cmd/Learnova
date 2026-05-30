@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
@@ -9,7 +9,8 @@ import {
   Clock, 
   Sparkles, 
   CheckCircle,
-  PlayCircle
+  PlayCircle,
+  Users
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import toast from "react-hot-toast";
@@ -18,11 +19,54 @@ export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isPodActive, setIsPodActive] = useState(false);
+  // --- AI TIMELINE FEATURE STATES ---
+  const videoRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredTimestamps, setFilteredTimestamps] = useState([]);
+
+  // Mock Data mimicking what an AI Video Intelligence API returns
+  const mockVideoAIProperties = {
+    duration: 300, 
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    conceptMap: [
+      { start: 0, end: 60, concept: "Introduction" },
+      { start: 61, end: 180, concept: "Core Architecture" },
+      { start: 181, end: 300, concept: "Advanced Optimization" }
+    ],
+    transcripts: [
+      { start: 15, text: "Welcome to this lecture on server side processes." },
+      { start: 75, text: "Let's dive deep into how backpropagation updates weights." },
+      { start: 120, text: "The chain rule is absolutely essential for understanding backpropagation." },
+      { start: 210, text: "Next, we will focus on progressive hydration patterns." }
+    ]
+  };
+ 
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredTimestamps([]);
+      return;
+    }
+    const matches = mockVideoAIProperties.transcripts.filter(t =>
+      t.text.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredTimestamps(matches);
+  }, [searchQuery]);
+
+  // Command the video player HTML element to jump to a specific time
+  const handleSeek = (seconds) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = seconds;
+      videoRef.current.play();
+      toast.success(`Jumped to ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`);
+    }
+  };
   if (!mounted) return null;
 
   // Mock course data matching params.id
@@ -99,6 +143,73 @@ export default function CourseDetailPage() {
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-50 via-zinc-100 to-zinc-400 mb-6 leading-tight">
             {course.title}
           </h1>
+          {/* 2. Outer Layout Splitter Wrapper */}
+          <div className={`flex flex-col ${isPodActive ? "lg:flex-row gap-6 items-start" : "w-full"}`}></div>
+            
+            {/* 3. Left Side Content Area */}
+            <div className={`transition-all duration-300 ${isPodActive ? "w-full lg:flex-1" : "w-full"}`}></div>
+          {/* 🌟 AI INTERACTIVE TIMELINE INTERFACE 🌟 */}
+          <div className="my-8 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 shadow-xl">
+            {/* The Video Stream */}
+            <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black mb-4">
+              <video 
+                ref={videoRef}
+                src={mockVideoAIProperties.videoUrl} 
+                controls 
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Segmented AI Concept Map Progress Track */}
+            <div className="mb-6">
+              <span className="text-xs font-semibold text-zinc-400 block mb-2 tracking-wider uppercase">AI Concept Map Timeline</span>
+              <div className="h-3 w-full bg-zinc-800 rounded-full flex overflow-hidden">
+                {mockVideoAIProperties.conceptMap.map((segment, index) => {
+                  const segmentWidth = ((segment.end - segment.start) / mockVideoAIProperties.duration) * 100;
+                  const trackColors = ["bg-indigo-600/60", "bg-purple-600/60", "bg-pink-600/60"];
+                  return (
+                    <div 
+                      key={index}
+                      style={{ width: `${segmentWidth}%` }}
+                      className={`${trackColors[index % trackColors.length]} h-full border-r border-zinc-950/40 cursor-pointer transition-all hover:brightness-125`}
+                      onClick={() => handleSeek(segment.start)}
+                      title={`${segment.concept} (Click to jump)`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* User Search Input Field */}
+            <div className="relative">
+              <input 
+                type="text"
+                placeholder="Type a topic to scan video timeline (e.g., 'backpropagation')..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+
+            {/* Dropdown list of timestamps found by AI string filtering */}
+            {filteredTimestamps.length > 0 && (
+              <div className="mt-3 bg-zinc-950 rounded-xl border border-zinc-800 p-3 space-y-2 max-h-48 overflow-y-auto">
+                <span className="text-xs text-indigo-400 font-bold block px-1">AI Matches Found:</span>
+                {filteredTimestamps.map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSeek(item.start)}
+                    className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-900 transition-colors text-sm"
+                  >
+                    <span className="text-indigo-400 font-mono font-semibold">
+                      {Math.floor(item.start / 60)}:${String(item.start % 60).padStart(2, '0')}
+                    </span>
+                    <span className="text-zinc-300 line-clamp-1">{item.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <p className="text-lg text-zinc-400 mb-8 max-w-3xl leading-relaxed">
             {course.description}
@@ -116,7 +227,19 @@ export default function CourseDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                    onClick={toggleStudyPod}
+                    type="button"
+                    className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-200 select-none border border-zinc-800 backdrop-blur-md ${
+                      isPodActive 
+                        ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-md" 
+                        : "bg-zinc-900/80 hover:bg-zinc-800 text-indigo-400 hover:text-indigo-300 shadow-lg"
+                    }`}
+                  >
+                    <Users className="w-5 h-5" />
+                    {isPodActive ? "Close Pod View" : "Start Study Pod"}
+                  </button>
               <button
                 onClick={() => toast.success("Enrolling in course...")}
                 type="button"
@@ -170,6 +293,32 @@ export default function CourseDetailPage() {
               ))}
             </div>
           </section>
+            {/* 5. Right Side Collaborative Live Workspace Panel */}
+            {isPodActive && (
+              <div className="w-full lg:w-[400px] lg:sticky lg:top-24 border border-zinc-800 bg-zinc-900/60 rounded-2xl overflow-hidden h-[calc(100vh-140px)] flex flex-col backdrop-blur-md shadow-2xl z-20 p-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="font-bold text-xs uppercase tracking-wider text-zinc-300">Live Study Pod Active</span>
+                  </div>
+                  <button onClick={() => setIsPodActive(false)} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-2 py-1 rounded">Leave</button>
+                </div>
+                
+                <p className="text-xs font-semibold text-zinc-500 uppercase mb-2">Active Members</p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-lg aspect-video flex items-center justify-center text-xs text-zinc-400">You</div>
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-lg aspect-video flex items-center justify-center text-xs text-zinc-500">Classmate</div>
+                </div>
+
+                <p className="text-xs font-semibold text-zinc-500 uppercase mb-2">Shared Notepad</p>
+                <textarea 
+                  className="w-full flex-1 bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-300 resize-none focus:outline-none"
+                  placeholder="Type shared notes here..."
+                  defaultValue={`# Notes\n- Discussing Server Side processes\n- Reviewing architecture graphs`}
+                />
+              </div>
+            )}
+        </motion.div>
         </motion.div>
       </main>
     </div>
