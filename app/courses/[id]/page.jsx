@@ -17,6 +17,7 @@ import ShareButton from "@/components/ui/ShareButton";
 import StudyDeck from "@/components/flashcards/StudyDeck";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import ReadingTimeBadge from "@/components/ui/ReadingTimeBadge";
+import Tooltip from "@/components/ui/Tooltip";
 import toast from "react-hot-toast";
 import { routeParamSchema } from "@/lib/validations/auth";
 import MarkdownRenderer from "@/components/ui/MarkdownRenderer";
@@ -193,7 +194,9 @@ export default function CourseDetailPage() {
         </button>
 
         <div className="flex items-center gap-3">
-          <ShareButton className="shadow-lg border-zinc-800/60" />
+          <Tooltip content="Share this course" placement="bottom">
+            <ShareButton className="shadow-lg border-zinc-800/60" />
+          </Tooltip>
         </div>
       </header>
 
@@ -251,7 +254,9 @@ export default function CourseDetailPage() {
                   <h3 className="text-sm font-bold text-zinc-100">{lastProgress.lessonTitle} <span className="text-zinc-500 font-normal ml-2">in {lastProgress.moduleTitle}</span></h3>
                 </div>
               </div>
-              <button onClick={() => toast.success("Returning to your last spot...")} className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20">Resume Learning</button>
+              <Tooltip content={`Jump back to: ${lastProgress.lessonTitle}`} placement="top">
+                <button onClick={() => toast.success("Returning to your last spot...")} className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20">Resume Learning</button>
+              </Tooltip>
             </motion.div>
           )}
 
@@ -361,13 +366,14 @@ export default function CourseDetailPage() {
                           </span>
                           <p className="text-sm text-zinc-300 leading-relaxed font-medium">{note.text}</p>
                         </div>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
-                          className="opacity-0 group-hover:opacity-100 p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                          title="Delete note"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <Tooltip content="Delete note" placement="top">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
+                            className="opacity-0 group-hover:opacity-100 p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   ))
@@ -397,18 +403,20 @@ export default function CourseDetailPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
-              <button
-                    onClick={toggleStudyPod}
-                    type="button"
-                    className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-200 select-none border border-zinc-800 backdrop-blur-md ${
-                      isPodActive 
-                        ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-md" 
-                        : "bg-zinc-900/80 hover:bg-zinc-800 text-indigo-400 hover:text-indigo-300 shadow-lg"
-                    }`}
-                  >
-                    <Users className="w-5 h-5" />
-                    {isPodActive ? "Close Pod View" : "Start Study Pod"}
-                  </button>
+              <Tooltip content={isPodActive ? "Hide collaboration panel" : "Collaborate with others in real-time"} placement="bottom">
+                <button
+                      onClick={toggleStudyPod}
+                      type="button"
+                      className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-200 select-none border border-zinc-800 backdrop-blur-md ${
+                        isPodActive 
+                          ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-md" 
+                          : "bg-zinc-900/80 hover:bg-zinc-800 text-indigo-400 hover:text-indigo-300 shadow-lg"
+                      }`}
+                    >
+                      <Users className="w-5 h-5" />
+                      {isPodActive ? "Close Pod View" : "Start Study Pod"}
+                    </button>
+              </Tooltip>
               <button
                 onClick={() => toast.success("Enrolling in course...")}
                 type="button"
