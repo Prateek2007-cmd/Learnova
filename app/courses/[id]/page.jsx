@@ -18,6 +18,7 @@ import StudyDeck from "@/components/flashcards/StudyDeck";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import ReadingTimeBadge from "@/components/ui/ReadingTimeBadge";
 import Tooltip from "@/components/ui/Tooltip";
+import DailyQuoteCard from "@/components/ui/DailyQuoteCard";
 import toast from "react-hot-toast";
 import { routeParamSchema } from "@/lib/validations/auth";
 import MarkdownRenderer from "@/components/ui/MarkdownRenderer";
@@ -237,6 +238,11 @@ export default function CourseDetailPage() {
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-50 via-zinc-100 to-zinc-400 mb-6 leading-tight">
             {course.title}
           </h1>
+
+          {/* 💡 DAILY MOTIVATION 💡 */}
+          <div className="mb-8">
+            <DailyQuoteCard />
+          </div>
 
           {/* 🎯 RESUME LEARNING BANNER 🎯 */}
           {lastProgress && (
